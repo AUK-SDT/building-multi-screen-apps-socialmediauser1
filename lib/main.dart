@@ -24,11 +24,11 @@ class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
 
   @override
-  State<ChatsScreen> createState() => _ChatsScreenState();
+  State<ChatsScreen> createState() => ChatsScreenState();
 }
 
-class _ChatsScreenState extends State<ChatsScreen> {
-  static const List<ChatItem> _seedChats = [
+class ChatsScreenState extends State<ChatsScreen> {
+  static const List<ChatItem> seedChats = [
     ChatItem(
       title: 'Denji',
       subtitle: "Bro I'm starving. Any food plans?",
@@ -101,79 +101,81 @@ class _ChatsScreenState extends State<ChatsScreen> {
     ),
   ];
 
-  final TextEditingController _searchController = TextEditingController();
-  late List<ChatItem> _chats;
-  String _searchQuery = '';
-  int _selectedFilter = 0;
-  int _selectedBottomTab = 2;
+  final TextEditingController searchController = TextEditingController();
+  late List<ChatItem> chats;
+  String searchQuery = '';
+  int selectedFilter = 0;
+  int selectedBottomTab = 2;
 
   @override
   void initState() {
     super.initState();
-    _chats = List<ChatItem>.from(_seedChats);
-    _sortChats();
+    chats = List<ChatItem>.from(seedChats);
+    sortChats();
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
+    searchController.dispose();
     super.dispose();
   }
 
-  void _sortChats() {
-    _chats.sort((a, b) {
+  void sortChats() {
+    chats.sort((a, b) {
       if (a.isPinned == b.isPinned) return 0;
       return a.isPinned ? -1 : 1;
     });
   }
 
-  int _unreadTotal() {
-    return _chats.fold<int>(0, (sum, chat) => sum + chat.unreadCount);
+  int unreadTotal() {
+    return chats.fold<int>(0, (sum, chat) => sum + chat.unreadCount);
   }
 
-  List<ChatItem> _visibleChats() {
-    final query = _searchQuery.trim().toLowerCase();
-    return _chats.where((chat) {
-      final matchesFilter = switch (_selectedFilter) {
+  List<ChatItem> visibleChats() {
+    final query = searchQuery.trim().toLowerCase();
+    return chats.where((chat) {
+      final matchesFilter = switch (selectedFilter) {
         1 => chat.unreadCount > 0,
         2 => chat.isPinned,
         _ => true,
       };
+
       final matchesQuery =
           query.isEmpty ||
           chat.title.toLowerCase().contains(query) ||
           chat.subtitle.toLowerCase().contains(query);
+
       return matchesFilter && matchesQuery;
     }).toList();
   }
 
-  void _togglePinned(ChatItem item) {
+  void togglePinned(ChatItem item) {
     setState(() {
-      final index = _chats.indexOf(item);
+      final index = chats.indexOf(item);
       if (index == -1) return;
-      _chats[index] = item.copyWith(isPinned: !item.isPinned);
-      _sortChats();
+      chats[index] = item.copyWith(isPinned: !item.isPinned);
+      sortChats();
     });
   }
 
-  void _toggleRead(ChatItem item) {
+  void toggleRead(ChatItem item) {
     setState(() {
-      final index = _chats.indexOf(item);
+      final index = chats.indexOf(item);
       if (index == -1) return;
       final nextUnread = item.unreadCount > 0 ? 0 : 1;
-      _chats[index] = item.copyWith(unreadCount: nextUnread);
+      chats[index] = item.copyWith(unreadCount: nextUnread);
     });
   }
 
-  void _removeChat(ChatItem item) {
+  void removeChat(ChatItem item) {
     setState(() {
-      _chats.remove(item);
+      chats.remove(item);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final visibleChats = _visibleChats();
+    final visibleChatsData = visibleChats();
 
     return Scaffold(
       appBar: AppBar(
@@ -183,7 +185,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
         centerTitle: true,
         toolbarHeight: 44,
         title: Text(
-          'Chats (${_unreadTotal()})',
+          'Chats (${unreadTotal()})',
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
       ),
@@ -193,26 +195,26 @@ class _ChatsScreenState extends State<ChatsScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: SearchBar(
-              controller: _searchController,
+              controller: searchController,
               onChanged: (value) {
                 setState(() {
-                  _searchQuery = value;
+                  searchQuery = value;
                 });
               },
             ),
           ),
           const SizedBox(height: 10),
           FilterRow(
-            selectedIndex: _selectedFilter,
+            selectedIndex: selectedFilter,
             onChanged: (value) {
               setState(() {
-                _selectedFilter = value;
+                selectedFilter = value;
               });
             },
           ),
           const SizedBox(height: 6),
           Expanded(
-            child: visibleChats.isEmpty
+            child: visibleChatsData.isEmpty
                 ? const Center(
                     child: Text(
                       'No chats found',
@@ -220,7 +222,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                     ),
                   )
                 : ListView.separated(
-                    itemCount: visibleChats.length,
+                    itemCount: visibleChatsData.length,
                     separatorBuilder: (_, _) => const Divider(
                       height: 1,
                       thickness: 0.8,
@@ -228,7 +230,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       indent: 86,
                     ),
                     itemBuilder: (context, index) {
-                      final item = visibleChats[index];
+                      final item = visibleChatsData[index];
                       return Slidable(
                         key: ValueKey('chat-${item.title}'),
                         endActionPane: ActionPane(
@@ -236,11 +238,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
                           extentRatio: 0.5,
                           dismissible: DismissiblePane(
                             confirmDismiss: () async => true,
-                            onDismissed: () => _removeChat(item),
+                            onDismissed: () => removeChat(item),
                           ),
                           children: [
                             SlidableAction(
-                              onPressed: (_) => _togglePinned(item),
+                              onPressed: (_) => togglePinned(item),
                               backgroundColor: const Color(0xFF2D8CFF),
                               foregroundColor: Colors.white,
                               icon: item.isPinned
@@ -250,7 +252,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                               borderRadius: BorderRadius.circular(0),
                             ),
                             SlidableAction(
-                              onPressed: (_) => _removeChat(item),
+                              onPressed: (_) => removeChat(item),
                               backgroundColor: const Color(0xFFFE3B30),
                               foregroundColor: Colors.white,
                               icon: Icons.delete,
@@ -261,7 +263,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                         ),
                         child: ChatTile(
                           item: item,
-                          onTap: () => _toggleRead(item),
+                          onTap: () => toggleRead(item),
                         ),
                       );
                     },
@@ -270,10 +272,10 @@ class _ChatsScreenState extends State<ChatsScreen> {
         ],
       ),
       bottomNavigationBar: BottomBarMock(
-        selectedIndex: _selectedBottomTab,
+        selectedIndex: selectedBottomTab,
         onTap: (index) {
           setState(() {
-            _selectedBottomTab = index;
+            selectedBottomTab = index;
           });
         },
       ),
@@ -446,6 +448,7 @@ class ChatTile extends StatelessWidget {
 
 class UnreadBubble extends StatelessWidget {
   final int count;
+
   const UnreadBubble({super.key, required this.count});
 
   @override
@@ -467,6 +470,7 @@ class UnreadBubble extends StatelessWidget {
 
 class Avatar extends StatelessWidget {
   final ChatItem item;
+
   const Avatar({super.key, required this.item});
 
   @override
